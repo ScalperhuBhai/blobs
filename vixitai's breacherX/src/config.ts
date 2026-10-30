@@ -15,6 +15,12 @@ export interface Config {
   maxFindings: number;
   dataDir: string;
   logLevel: LogLevel;
+  // --- Control plane / GitHub App ---
+  webhookSecret?: string;
+  githubToken?: string;
+  githubApiUrl: string;
+  autoApprove: boolean;
+  port: number;
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -42,6 +48,11 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     maxFindings: Math.max(1, Math.trunc(num(env.BREACHERX_MAX_FINDINGS, 50))),
     dataDir: env.BREACHERX_DATA_DIR || ".breacherx",
     logLevel: (env.BREACHERX_LOG_LEVEL as LogLevel) || "info",
+    webhookSecret: env.BREACHERX_WEBHOOK_SECRET || undefined,
+    githubToken: env.GITHUB_TOKEN || env.BREACHERX_GITHUB_TOKEN || undefined,
+    githubApiUrl: env.GITHUB_API_URL || "https://api.github.com",
+    autoApprove: bool(env.BREACHERX_AUTO_APPROVE, false),
+    port: Math.trunc(num(env.PORT ?? env.BREACHERX_PORT, 8787)),
     ...overrides,
   };
   return config;

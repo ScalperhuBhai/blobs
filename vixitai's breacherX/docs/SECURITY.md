@@ -6,9 +6,9 @@ GitHub-App and sandboxed-execution phases.
 
 | Requirement | Status | Where / what's needed |
 |---|---|---|
-| Least-privilege Git provider permissions | ⏳ design | GitHub App scopes defined in roadmap; the current CLI reads local diffs only, no remote write. |
-| Signed webhooks + replay protection | ⏳ design | HMAC signature verification + delivery-id dedupe belongs in the ingestion service (Phase 1 GitHub App). |
-| Strict tenant isolation | ⏳ schema | `tenants`/`repositories` scoping is in `src/db/schema.sql`; row-level enforcement is added with the API layer. |
+| Least-privilege Git provider permissions | 🟡 partial | The `GitHubClient` only reads diffs and writes reviews/comments — it never pushes code. App installation scopes are documented in the roadmap. |
+| Signed webhooks + replay protection | ✅ implemented | `src/github/signature.ts` verifies `X-Hub-Signature-256` (HMAC-SHA256, constant-time); the queue dedupes by delivery id and by `repo#pr@headSha` (`src/server/queue.ts`). |
+| Strict tenant isolation | ⏳ schema | `tenants`/`repositories` scoping is in `src/db/schema.sql`; row-level enforcement is added with the persistent API layer. |
 | No production credentials in test workers | ✅ by construction | The pipeline never injects secrets into analyzers; external analyzers run with the caller's environment and no BreacherX credentials. |
 | Restrict outbound network + CPU/mem/disk/process limits | ⏳ runtime | External analyzers run via `execFile` with a timeout and bounded buffer (`src/analyzers/external.ts`); full cgroup/network sandboxing is the disposable-worker milestone. |
 | Sandbox isolation for hostile code | ⏳ runtime | BreacherX **does not execute** reviewed code in the current pipeline — only static analyzers run. Test reproduction (which does run code) must happen in a disposable isolated worker, never in-process. |

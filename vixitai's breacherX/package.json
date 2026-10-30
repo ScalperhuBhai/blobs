@@ -5,7 +5,8 @@
   "description": "VixitAI BreacherX — an evidence-based AI code review pipeline (CodeRabbit-class blueprint, Phase 0 + Phase 1 MVP).",
   "type": "module",
   "bin": {
-    "breacherx": "dist/src/index.js"
+    "breacherx": "dist/src/index.js",
+    "breacherx-server": "dist/src/server/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -13,6 +14,7 @@
     "review": "node dist/src/index.js review",
     "bench": "node dist/src/index.js bench",
     "demo": "node dist/src/index.js review examples/sample.diff --format md --no-fail",
+    "server": "node dist/src/server/index.js",
     "test": "node --test \"dist/test/\"*.test.js"
   },
   "engines": {

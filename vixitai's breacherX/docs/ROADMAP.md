@@ -12,13 +12,15 @@ scaffolded, ⏳ = specified/next.
 - ⏳ Public benchmark adapter (e.g. ReviewBench) — verify repo/license/task
   format before adoption, then add as another dataset `--set`.
 
-## Phase 1 — End-to-end MVP (core built ✅ / app ⏳)
+## Phase 1 — End-to-end MVP (built ✅)
 - ✅ Diff parsing, context, deterministic checks, AI findings, verification,
   ranked publish, CLI.
 - ✅ Pluggable model provider with Anthropic implementation + cost tracking.
-- ⏳ GitHub App: signed webhook ingestion, base/head fetch, idempotent job
-  enqueue (SQS + DLQ), inline-comment posting via the reviews API.
-- ⏳ Control plane (Fastify): auth, tenants, job lifecycle, provider policy.
+- ✅ GitHub App control plane: signed webhook ingestion (`src/server`,
+  `src/github`), base/head capture, idempotent job enqueue with retries + DLQ,
+  diff fetch, inline-comment posting via the reviews API, dry-run/shadow mode.
+- ⏳ Persistent control plane: auth, multi-tenant job lifecycle, provider policy,
+  swap the in-memory queue for SQS + DLQ and the JSON store for Postgres.
 
 ## Phase 2 — Context engine (⏳ / 🟡)
 - 🟡 Language detection + head-file context (done); hunk→symbol mapping is next.

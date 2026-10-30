@@ -39,6 +39,9 @@ git -C /path/to/repo diff --staged | node dist/src/index.js review - --repo /pat
 
 # Run the accuracy benchmark (the release gate):
 node dist/src/index.js bench --set regression
+
+# Start the GitHub App control plane (webhook receiver + review worker):
+npm run server
 ```
 
 No global install needed; the project builds with the `tsc` on your `PATH` and
@@ -99,6 +102,38 @@ TP=6 FP=0 FN=1  avg 1ms  cost $0.0000
 on purpose to represent the recall frontier real AI passes must close.)
 
 ---
+
+## Control plane (GitHub App review loop)
+
+`src/server/` is the Phase 1 ingestion + review service, built on Node's stdlib
+`http` server — no framework:
+
+```
+POST /webhook     signed GitHub webhook receiver (HMAC-SHA256 verified)
+GET  /healthz     liveness, queue depth, dead-letter count, dry-run state
+GET  /reviews     list stored run ids
+GET  /reviews/:id fetch a stored run (full ReviewResult JSON)
+GET  /dlq         dead-letter jobs
+```
+
+Flow: webhook → **verify signature** → parse `pull_request` event → **enqueue
+idempotently** (dedupe by delivery id and by `repo#pr@headSha`) → worker fetches
+the PR diff → runs the pipeline → persists the run → **posts a review** with
+inline comments. The queue retries with bounded attempts and dead-letters
+poison jobs.
+
+```bash
+export BREACHERX_WEBHOOK_SECRET=whsec        # enforce signed webhooks
+export GITHUB_TOKEN=ghp_...                  # omit for dry-run / shadow mode
+export BREACHERX_MODEL_PROVIDER=mock         # or anthropic
+npm run server                               # listens on :8787 (PORT to override)
+```
+
+Without a `GITHUB_TOKEN` the client runs in **dry-run (shadow) mode**: it
+computes the full review and logs what it *would* post, but makes no write calls
+— exactly the blueprint's shadow-mode evaluation. With a token, it posts a real
+review (`REQUEST_CHANGES` when blocking issues are found; never auto-approves
+unless `BREACHERX_AUTO_APPROVE=true`).
 
 ## Using a real model
 
