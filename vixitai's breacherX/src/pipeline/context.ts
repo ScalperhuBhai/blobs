@@ -14,6 +14,29 @@ import type {
 } from "../types.js";
 import { renderChangedSnippet } from "../util/diff.js";
 import { readHeadFile } from "../util/git.js";
+import { indexSymbols, changedSymbols as computeChangedSymbols } from "../context/symbols.js";
+import { extractImports } from "../context/imports.js";
+
+/**
+ * Reconstruct an approximate head-file view from the diff when no working tree is
+ * available, so symbol indexing still has something to parse. It uses added +
+ * context lines positioned by their new-file line numbers.
+ */
+function reconstructFromDiff(file: ReviewContextFile["file"]): string {
+  const byLine = new Map<number, string>();
+  let max = 0;
+  for (const hunk of file.hunks) {
+    for (const line of hunk.lines) {
+      if (line.newLine && (line.kind === "add" || line.kind === "context")) {
+        byLine.set(line.newLine, line.content);
+        if (line.newLine > max) max = line.newLine;
+      }
+    }
+  }
+  const lines: string[] = [];
+  for (let i = 1; i <= max; i++) lines.push(byLine.get(i) ?? "");
+  return lines.join("\n");
+}
 
 export async function buildContext(
   diff: ParsedDiff,
@@ -24,10 +47,15 @@ export async function buildContext(
     if (file.isBinary) continue;
     const headContent =
       file.changeType === "deleted" ? undefined : await readHeadFile(repoPath, file.newPath);
+    const parseSource = headContent ?? reconstructFromDiff(file);
+    const symbols = indexSymbols(parseSource, file.language);
     out.push({
       file,
       headContent,
       changedSnippet: renderChangedSnippet(file),
+      symbols,
+      changedSymbols: computeChangedSymbols(symbols, file.changedNewLines),
+      imports: extractImports(parseSource, file.language),
     });
   }
   return out;

@@ -22,11 +22,16 @@ scaffolded, ⏳ = specified/next.
 - ⏳ Persistent control plane: auth, multi-tenant job lifecycle, provider policy,
   swap the in-memory queue for SQS + DLQ and the JSON store for Postgres.
 
-## Phase 2 — Context engine (⏳ / 🟡)
-- 🟡 Language detection + head-file context (done); hunk→symbol mapping is next.
-- ⏳ tree-sitter AST + symbol index, incremental re-parse of changed files.
-- ⏳ Dependency/call graph; recompute affected regions only.
-- ⏳ Hybrid lexical + vector retrieval over `code_chunks` (pgvector).
+## Phase 2 — Context engine (core built ✅ / graph+vectors ⏳)
+- ✅ Structural symbol index (functions/classes/methods) with line ranges —
+  `src/context/symbols.ts` (brace matching for C-family/JS/TS, indentation for
+  Python). tree-sitter can replace it behind the same `CodeSymbol` shape.
+- ✅ Hunk→symbol mapping; findings annotated with their enclosing symbol.
+- ✅ Import/dependency extraction — `src/context/imports.ts`.
+- ✅ Lexical retrieval (BM25) behind a `Retriever` interface, wired into the AI
+  discovery prompt — `src/context/retrieval.ts`.
+- ⏳ Vector half of hybrid retrieval over `code_chunks` (pgvector) + full
+  call/dependency graph and incremental indexing.
 - ⏳ Versioned, repo-scoped project rules (`REVIEW.md`/custom rules).
 
 ## Phase 3 — Verification hardening (core built ✅ / reproduction ⏳)

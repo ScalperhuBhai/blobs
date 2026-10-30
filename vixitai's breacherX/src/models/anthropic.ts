@@ -128,13 +128,35 @@ export class AnthropicProvider {
             .map((f) => `- ${f.ruleId} @ ${f.filePath}:${f.startLine} (${f.severity})`)
             .join("\n")
         : "";
+    const symbols =
+      req.changedSymbols && req.changedSymbols.length > 0
+        ? `\n\nChanged symbols: ` +
+          req.changedSymbols.map((s) => `${s.kind} ${s.name} (L${s.startLine}-${s.endLine})`).join(", ")
+        : "";
+    const imports =
+      req.imports && req.imports.length > 0
+        ? `\n\nFile imports: ` + req.imports.map((i) => i.module).slice(0, 30).join(", ")
+        : "";
+    const related =
+      req.relatedContext && req.relatedContext.length > 0
+        ? `\n\n<related_context untrusted="true">\n` +
+          req.relatedContext
+            .map((r) => `// ${r.chunk.id}\n${truncate(r.chunk.content, 1500)}`)
+            .join("\n---\n") +
+          `\n</related_context>`
+        : "";
     const head = req.headContent
       ? `\n\n<head_file untrusted="true">\n${truncate(req.headContent, 8000)}\n</head_file>`
       : "";
+    const passLine = req.pass ? `Specialist pass: focus on ${req.pass} defects.\n\n` : "";
     return (
+      passLine +
       `Review the changed lines in this diff. Report only defects introduced by the change.\n\n` +
       `<diff untrusted="true">\n${truncate(req.changedSnippet, 12000)}\n</diff>` +
+      symbols +
+      imports +
       head +
+      related +
       known +
       `\n\nReturn the JSON array now.`
     );

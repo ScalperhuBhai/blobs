@@ -71,6 +71,7 @@ export function renderMarkdown(result: ReviewResult): string {
           `\`${f.filePath}:${f.startLine}${f.endLine !== f.startLine ? `-${f.endLine}` : ""}\``,
       );
       lines.push("");
+      if (f.symbol) lines.push(`- **Location:** in ${f.symbol}`);
       lines.push(`- **Problem:** ${f.problem}`);
       lines.push(`- **Impact:** ${f.impact}`);
       lines.push(

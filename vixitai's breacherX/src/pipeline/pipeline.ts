@@ -24,6 +24,8 @@ import { createProvider, estimateCost, type ModelProvider } from "../models/prov
 import { buildContext } from "./context.js";
 import { verifyFindings } from "./verification.js";
 import { buildSummary, decideReviewStatus } from "./publish.js";
+import { buildRetriever } from "../context/retrieval.js";
+import { enclosingSymbol, type CodeSymbol } from "../context/symbols.js";
 
 async function timed<T>(
   stage: string,
@@ -71,6 +73,11 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
     (r) => ({ findings: r.length }),
   );
 
+  // Build a cross-file lexical retriever for related-context lookups (Phase 2).
+  const retriever = buildRetriever(
+    context.map((c) => ({ filePath: c.file.newPath, content: c.headContent ?? c.changedSnippet })),
+  );
+
   // Stage 05 — AI discovery (one pass per changed file).
   let inputTokens = 0;
   let outputTokens = 0;
@@ -82,11 +89,18 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
       for (const c of context) {
         if (c.file.changeType === "deleted") continue;
         const known = deterministic.filter((d) => d.filePath === c.file.newPath);
+        const related = retriever
+          .retrieve(c.changedSnippet, 4)
+          .filter((s) => s.chunk.filePath !== c.file.newPath)
+          .slice(0, 3);
         const res = await provider.discover({
           file: c.file,
           changedSnippet: c.changedSnippet,
           headContent: c.headContent,
           knownFindings: known,
+          changedSymbols: c.changedSymbols,
+          imports: c.imports,
+          relatedContext: related,
         });
         inputTokens += res.usage.inputTokens;
         outputTokens += res.usage.outputTokens;
@@ -106,6 +120,20 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
     async () => verifyFindings(rawAll, headByPath, config),
     (r) => ({ published: r.published.length, suppressed: r.suppressed.length }),
   );
+
+  // Annotate findings with their enclosing symbol (Phase 2 code intelligence).
+  const symbolsByPath = new Map<string, CodeSymbol[]>();
+  for (const c of context) symbolsByPath.set(c.file.newPath, c.symbols);
+  const annotate = (list: Finding[]): void => {
+    for (const f of list) {
+      const syms = symbolsByPath.get(f.filePath);
+      if (!syms) continue;
+      const s = enclosingSymbol(syms, f.startLine);
+      if (s) f.symbol = `${s.kind} ${s.name}`;
+    }
+  };
+  annotate(verified.published);
+  annotate(verified.suppressed);
 
   // Stage 07 — Publish.
   const published: Finding[] = verified.published;

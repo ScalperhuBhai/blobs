@@ -7,6 +7,10 @@
  *   verification_status, analyzer_result, test_result, model_version
  */
 
+import type { CodeSymbol } from "./context/symbols.js";
+import type { ImportRef } from "./context/imports.js";
+import type { ScoredChunk } from "./context/retrieval.js";
+
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export const SEVERITY_ORDER: Record<Severity, number> = {
@@ -118,6 +122,8 @@ export interface Finding extends RawFinding {
   calibratedConfidence: number;
   analyzerResult?: string;
   testResult?: string;
+  /** Enclosing symbol (function/class/method) name, when known. */
+  symbol?: string;
   /** Rank score used for ordering and truncation. */
   rankScore: number;
 }
@@ -128,6 +134,12 @@ export interface ReviewContextFile {
   headContent?: string;
   /** Changed hunks rendered for a model prompt. */
   changedSnippet: string;
+  /** All symbols in the head file (Phase 2 code intelligence). */
+  symbols: CodeSymbol[];
+  /** Symbols touched by this diff. */
+  changedSymbols: CodeSymbol[];
+  /** Module dependencies declared in the head file. */
+  imports: ImportRef[];
 }
 
 export interface ReviewInput {
@@ -179,6 +191,14 @@ export interface DiscoveryRequest {
   headContent?: string;
   /** Deterministic findings already known, so the model can corroborate/avoid dupes. */
   knownFindings: RawFinding[];
+  /** Symbols touched by the diff (Phase 2). */
+  changedSymbols?: CodeSymbol[];
+  /** Module dependencies of the file (Phase 2). */
+  imports?: ImportRef[];
+  /** Related code chunks retrieved for extra context (Phase 2). */
+  relatedContext?: ScoredChunk[];
+  /** The specialist pass this request is for (Phase 3 — multi-pass discovery). */
+  pass?: string;
 }
 
 export interface ModelUsage {

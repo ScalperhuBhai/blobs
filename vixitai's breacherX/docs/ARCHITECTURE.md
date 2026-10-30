@@ -42,7 +42,7 @@ ReviewInput (diff text, repoPath?, reviewId?)
 | Blueprint stage | Module | Notes |
 |---|---|---|
 | 02 Ingestion | `src/util/diff.ts` | Dependency-free unified-diff parser; tracks new/old line numbers and the changed-line set per file. |
-| 03 Repository context | `src/pipeline/context.ts`, `src/util/git.ts`, `src/util/lang.ts` | Reads head-file content for context and range validation; language detection by extension. AST/symbol index is specified for Phase 2 (see roadmap). |
+| 03 Repository context | `src/pipeline/context.ts`, `src/context/*`, `src/util/git.ts`, `src/util/lang.ts` | Reads head-file content (or reconstructs from the diff), indexes symbols, maps hunks→symbols, extracts imports, and builds a BM25 retriever for related-context lookups. Full call/dependency graph + pgvector are Phase 2's remaining items. |
 | 04 Deterministic checks | `src/analyzers/builtin.ts`, `src/analyzers/external.ts` | Builtin rule engine always runs; ruff/eslint/semgrep run when a working tree is provided. Degrade gracefully if a tool is absent. |
 | 05 AI discovery | `src/models/provider.ts` (+ `mock.ts`, `anthropic.ts`) | One interface, per-task model routing, token/cost tracking, automatic fallback to mock when no key. |
 | 06 Verification | `src/pipeline/verification.ts` | The accuracy differentiator — see `ACCURACY.md`. |
