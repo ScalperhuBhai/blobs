@@ -1,0 +1,31 @@
+{
+  "minConfidence": 0.5,
+  "maxFindings": 30,
+  "changedLinesOnly": true,
+  "ignorePaths": ["dist/**", "build/**", "**/*.min.js", "vendor/**", "**/__generated__/**"],
+  "disabledRules": ["js/leftover-debug"],
+  "severityOverrides": {
+    "sql/string-built-query": "critical",
+    "secret/generic-assignment": "critical"
+  },
+  "customRules": [
+    {
+      "id": "no-internal-host",
+      "pattern": "https?://(?:localhost|127\\.0\\.0\\.1|internal\\.vixitai\\.local)",
+      "languages": "any",
+      "severity": "medium",
+      "category": "reliability",
+      "message": "Hardcoded internal/localhost URL in changed code.",
+      "impact": "Internal hosts break in other environments; use configuration."
+    },
+    {
+      "id": "no-ts-ignore",
+      "pattern": "@ts-ignore",
+      "languages": ["typescript"],
+      "severity": "low",
+      "category": "maintainability",
+      "message": "@ts-ignore suppresses a type error; prefer @ts-expect-error with a reason.",
+      "impact": "Silently ignored type errors hide real bugs."
+    }
+  ]
+}

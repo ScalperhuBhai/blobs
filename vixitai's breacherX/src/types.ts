@@ -149,6 +149,8 @@ export interface ReviewInput {
   repoPath?: string;
   /** Logical identifier for the review (PR number, commit sha, etc.). */
   reviewId?: string;
+  /** Explicit path to a `.breacherx.json`; otherwise discovered under repoPath. */
+  configPath?: string;
 }
 
 export interface StageTrace {

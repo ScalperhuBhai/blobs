@@ -87,6 +87,7 @@ Options (review):
   --min-confidence <0..1>  Publish threshold (default 0.55)
   --max-findings <n>       Cap published findings
   --all-lines              Do not restrict findings to changed lines
+  --config <file>          Path to a .breacherx.json (else discovered under --repo)
   --review-id <id>         Logical id for the review (PR number / sha)
   --out <file>             Also write the formatted output to this file
   --no-save                Do not persist the run
@@ -115,6 +116,7 @@ async function cmdReview(flags: Flags): Promise<number> {
       diffText,
       repoPath: typeof flags.repo === "string" ? flags.repo : undefined,
       reviewId: typeof flags["review-id"] === "string" ? flags["review-id"] : undefined,
+      configPath: typeof flags.config === "string" ? flags.config : undefined,
     },
     config,
   );

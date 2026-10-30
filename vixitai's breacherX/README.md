@@ -154,6 +154,29 @@ back to the mock provider so the pipeline always completes.
 
 ---
 
+## Repo-scoped config & custom rules
+
+Drop a `.breacherx.json` at a repo root (or pass `--config`) to tune the reviewer
+without code changes:
+
+```json
+{
+  "minConfidence": 0.5,
+  "ignorePaths": ["dist/**", "**/*.min.js", "vendor/**"],
+  "disabledRules": ["js/leftover-debug"],
+  "severityOverrides": { "sql/string-built-query": "critical" },
+  "customRules": [
+    { "id": "no-ts-ignore", "pattern": "@ts-ignore", "languages": ["typescript"],
+      "severity": "low", "category": "maintainability",
+      "message": "Prefer @ts-expect-error with a reason." }
+  ]
+}
+```
+
+Ignored paths only *remove* scope; disabled rules still leave a suppressed-finding
+audit trail; custom patterns are length-capped and compiled defensively. See
+`examples/.breacherx.json`.
+
 ## Documentation
 
 - [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md) — the source blueprint, transcribed.

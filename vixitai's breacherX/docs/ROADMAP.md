@@ -30,9 +30,10 @@ scaffolded, ⏳ = specified/next.
 - ✅ Import/dependency extraction — `src/context/imports.ts`.
 - ✅ Lexical retrieval (BM25) behind a `Retriever` interface, wired into the AI
   discovery prompt — `src/context/retrieval.ts`.
+- ✅ Repo-scoped config + custom rules (`.breacherx.json`): thresholds, ignored
+  paths, disabled rules, severity overrides, custom regex rules — `src/config/repo.ts`.
 - ⏳ Vector half of hybrid retrieval over `code_chunks` (pgvector) + full
   call/dependency graph and incremental indexing.
-- ⏳ Versioned, repo-scoped project rules (`REVIEW.md`/custom rules).
 
 ## Phase 3 — Verification hardening (core built ✅ / reproduction ⏳)
 - ✅ Range validation, introduced-by-change, dedupe, corroboration, calibration.

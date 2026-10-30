@@ -26,6 +26,13 @@ import { verifyFindings } from "./verification.js";
 import { buildSummary, decideReviewStatus } from "./publish.js";
 import { buildRetriever } from "../context/retrieval.js";
 import { enclosingSymbol, type CodeSymbol } from "../context/symbols.js";
+import {
+  loadRepoConfig,
+  applyRepoConfig,
+  filterIgnoredFiles,
+  runCustomRules,
+  applyRuleOverrides,
+} from "../config/repo.js";
 
 async function timed<T>(
   stage: string,
@@ -41,23 +48,33 @@ async function timed<T>(
   return result;
 }
 
-export async function runReview(input: ReviewInput, config: Config): Promise<ReviewResult> {
+export async function runReview(input: ReviewInput, baseConfig: Config): Promise<ReviewResult> {
   const trace: StageTrace[] = [];
   const reviewId = input.reviewId ?? `review-${Date.now()}`;
+
+  // Repo-scoped config / custom rules (.breacherx.json), merged over runtime config.
+  const repoConfig = await loadRepoConfig(input.repoPath, input.configPath);
+  const config = applyRepoConfig(baseConfig, repoConfig);
   const provider: ModelProvider = createProvider(config);
 
   // Stage 02 — Ingest + parse.
   const diff = await timed("ingest", trace, async () => parseUnifiedDiff(input.diffText), (d) => ({
     files: d.files.length,
   }));
-  const reviewableFiles = diff.files.filter((f) => !f.isBinary);
+  const reviewableFiles = filterIgnoredFiles(
+    diff.files.filter((f) => !f.isBinary),
+    repoConfig,
+  );
   const byPath = new Map<string, FileDiff>();
   for (const f of reviewableFiles) byPath.set(f.newPath, f);
 
   // Stage 03 — Context.
-  const context = await timed("context", trace, () => buildContext(diff, input.repoPath), (c) => ({
-    files: c.length,
-  }));
+  const context = await timed(
+    "context",
+    trace,
+    () => buildContext({ files: reviewableFiles }, input.repoPath),
+    (c) => ({ files: c.length }),
+  );
   const headByPath = new Map<string, { file: FileDiff; headContent?: string }>();
   for (const c of context) headByPath.set(c.file.newPath, { file: c.file, headContent: c.headContent });
 
@@ -67,8 +84,9 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
     trace,
     async () => {
       const builtin = reviewableFiles.flatMap((f) => runBuiltinAnalyzer(f));
+      const custom = reviewableFiles.flatMap((f) => runCustomRules(f, repoConfig));
       const external = await runExternalAnalyzers(input.repoPath, reviewableFiles);
-      return [...builtin, ...external];
+      return [...builtin, ...custom, ...external];
     },
     (r) => ({ findings: r.length }),
   );
@@ -111,7 +129,7 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
     (r) => ({ findings: r.length, inputTokens, outputTokens }),
   );
 
-  const rawAll = [...deterministic, ...discovery];
+  const rawAll = applyRuleOverrides([...deterministic, ...discovery], repoConfig);
 
   // Stage 06 — Verification.
   const verified = await timed(
@@ -156,7 +174,7 @@ export async function runReview(input: ReviewInput, config: Config): Promise<Rev
     cost,
     stats: {
       filesChanged: reviewableFiles.length,
-      changedLines: countChangedLines(diff),
+      changedLines: countChangedLines({ files: reviewableFiles }),
       rawFindings: rawAll.length,
       publishedFindings: published.length,
     },
