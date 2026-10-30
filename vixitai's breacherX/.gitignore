@@ -1,0 +1,18 @@
+# Build output
+dist/
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Local run artifacts
+.breacherx/
+runs/
+*.log
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store

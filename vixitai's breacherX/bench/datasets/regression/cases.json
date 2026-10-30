@@ -1,0 +1,42 @@
+{
+  "version": "1",
+  "description": "Seed regression suite for BreacherX. Mix of catchable defects and one deliberately-hard semantic miss so recall stays honest. Grow this with verified bugs, important misses, and false positives from shadow mode.",
+  "cases": [
+    {
+      "id": "py-eval-rce",
+      "diff": "diff --git a/app/run.py b/app/run.py\nnew file mode 100644\nindex 0000000..1111111\n--- /dev/null\n+++ b/app/run.py\n@@ -0,0 +1,4 @@\n+import os\n+def run(cmd):\n+    result = eval(cmd)\n+    return result\n",
+      "expected": [
+        { "file": "app/run.py", "line": 3, "category": "security", "ruleIdContains": "eval" }
+      ]
+    },
+    {
+      "id": "py-subprocess-and-bare-except",
+      "diff": "diff --git a/deploy/run.py b/deploy/run.py\nnew file mode 100644\nindex 0000000..2222222\n--- /dev/null\n+++ b/deploy/run.py\n@@ -0,0 +1,6 @@\n+import subprocess\n+def deploy(target):\n+    try:\n+        subprocess.run(\"deploy \" + target, shell=True)\n+    except:\n+        pass\n",
+      "expected": [
+        { "file": "deploy/run.py", "line": 4, "category": "security", "ruleIdContains": "subprocess" },
+        { "file": "deploy/run.py", "line": 5, "category": "reliability", "ruleIdContains": "bare-except" }
+      ]
+    },
+    {
+      "id": "js-eval-and-loose-eq",
+      "diff": "diff --git a/src/handler.js b/src/handler.js\nindex 3333333..4444444 100644\n--- a/src/handler.js\n+++ b/src/handler.js\n@@ -10,3 +10,6 @@ function handle(req) {\n   const a = 1;\n   const b = 2;\n   const c = 3;\n+  if (req.body == null) return;\n+  const data = eval(req.query.expr);\n+  console.log(data);\n",
+      "expected": [
+        { "file": "src/handler.js", "line": 13, "category": "correctness", "ruleIdContains": "loose-equality" },
+        { "file": "src/handler.js", "line": 14, "category": "security", "ruleIdContains": "eval" },
+        { "file": "src/handler.js", "line": 15, "category": "maintainability", "ruleIdContains": "debug" }
+      ]
+    },
+    {
+      "id": "clean-change-no-findings",
+      "diff": "diff --git a/src/clean.ts b/src/clean.ts\nindex 5555555..6666666 100644\n--- a/src/clean.ts\n+++ b/src/clean.ts\n@@ -1,2 +1,6 @@\n export function add(a: number, b: number): number {\n   return a + b;\n+}\n+export function sub(a: number, b: number): number {\n+  return a - b;\n+}\n",
+      "expected": []
+    },
+    {
+      "id": "auth-inverted-check-hard-miss",
+      "diff": "diff --git a/auth/check.py b/auth/check.py\nnew file mode 100644\nindex 0000000..7777777\n--- /dev/null\n+++ b/auth/check.py\n@@ -0,0 +1,5 @@\n+def authorize(user, resource):\n+    # intended: deny non-admins\n+    if not user.is_admin:\n+        return allow(resource)\n+    return deny(resource)\n",
+      "expected": [
+        { "file": "auth/check.py", "line": 4, "category": "security" }
+      ]
+    }
+  ]
+}

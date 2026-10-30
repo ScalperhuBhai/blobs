@@ -1,0 +1,31 @@
+diff --git a/service/payments.py b/service/payments.py
+new file mode 100644
+index 0000000..abcdef1
+--- /dev/null
++++ b/service/payments.py
+@@ -0,0 +1,12 @@
++import subprocess
++
++def charge(user_id, amount, raw_query):
++    # build the audit query
++    q = "SELECT * FROM charges WHERE user='" + user_id + "'"
++    db.execute(q)
++    try:
++        subprocess.run("notify " + user_id, shell=True)
++    except:
++        pass
++    token = "hardcoded-static-credential-here"
++    return token
+diff --git a/web/src/checkout.ts b/web/src/checkout.ts
+index 1234567..7654321 100644
+--- a/web/src/checkout.ts
++++ b/web/src/checkout.ts
+@@ -20,4 +20,8 @@ export async function checkout(cart: Cart) {
+   const items = cart.items;
+   const total = items.reduce((a, b) => a + b.price, 0);
+   const user = getUser();
+   validate(total);
++  const config = eval(cart.rawConfig);
++  saveOrder(cart);
++  if (user.token == null) return;
++  console.log("order saved", config);
