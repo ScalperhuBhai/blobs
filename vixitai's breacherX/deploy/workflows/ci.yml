@@ -1,0 +1,41 @@
+# BreacherX CI — build, test, and the accuracy release gate.
+#
+# This is a TEMPLATE. Copy it to .github/workflows/ci.yml at the repo root.
+# (It is kept under deploy/workflows/ so it does not auto-run from this folder.)
+#
+# The `working-directory` assumes BreacherX lives in the "vixitai's breacherX"
+# subfolder; change it (or drop it) if BreacherX is the repo root.
+
+name: breacherx-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    working-directory: "vixitai's breacherX"
+
+jobs:
+  build-test-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit + integration tests
+        run: npm test
+
+      - name: Accuracy release gate (precision floor)
+        # No model/prompt/threshold/rule change ships if precision drops.
+        run: node dist/src/index.js bench --set regression --min-precision 0.9

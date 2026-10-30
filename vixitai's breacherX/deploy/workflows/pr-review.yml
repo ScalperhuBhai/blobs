@@ -1,0 +1,79 @@
+# BreacherX PR review — run the reviewer on each pull request and post a review.
+#
+# This is a TEMPLATE. Copy it to .github/workflows/pr-review.yml in the repo you
+# want reviewed. It uses the CLI (no webhook server needed) and posts the result
+# as a single sticky review comment via the built-in GITHUB_TOKEN.
+#
+# For real model output set ANTHROPIC_API_KEY as a repo secret and switch the
+# provider to "anthropic".
+
+name: breacherx-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head (full history for base diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install BreacherX. Replace with `npm i -g breacherx` once published, or
+      # point at the subfolder/repo where it lives.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install & build BreacherX
+        run: |
+          git clone --depth 1 https://github.com/vixitai/breacherx /tmp/breacherx || true
+          # If BreacherX is vendored in this repo instead, build it from there.
+
+      - name: Compute PR diff
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff "origin/${{ github.base_ref }}...HEAD" > /tmp/pr.diff
+          echo "Diff size: $(wc -l < /tmp/pr.diff) lines"
+
+      - name: Run BreacherX review
+        id: review
+        env:
+          BREACHERX_MODEL_PROVIDER: mock # set to "anthropic" with ANTHROPIC_API_KEY
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Adjust the path to the built CLI for your install layout:
+          node "vixitai's breacherX/dist/src/index.js" review /tmp/pr.diff \
+            --repo "$GITHUB_WORKSPACE" --format md --no-fail --no-save > /tmp/review.md || true
+          cat /tmp/review.md
+
+      - name: Post review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/review.md', 'utf8');
+            const marker = '<!-- breacherx-review -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            const payload = `${marker}\n\n${body}`;
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body: payload,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, body: payload,
+              });
+            }

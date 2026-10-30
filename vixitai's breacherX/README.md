@@ -184,6 +184,7 @@ audit trail; custom patterns are length-capped and compiled defensively. See
 - [`docs/ACCURACY.md`](./docs/ACCURACY.md) — the verification + benchmark strategy.
 - [`docs/SECURITY.md`](./docs/SECURITY.md) — launch-blocker security requirements and status.
 - [`docs/ROADMAP.md`](./docs/ROADMAP.md) — the build roadmap and what is / isn't done here.
+- [`deploy/README.md`](./deploy/README.md) — deploy as a CI check, a Docker webhook service, or on AWS.
 
 ## Status & honesty note
 

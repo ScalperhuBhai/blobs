@@ -1,0 +1,49 @@
+# Local/staging stack for BreacherX: control plane + PostgreSQL (pgvector).
+#
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# Set secrets via an .env file next to this compose file (see .env.example at the
+# project root). Without GITHUB_TOKEN the server runs in dry-run / shadow mode.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: breacherx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-breacherx}
+      POSTGRES_DB: breacherx
+    volumes:
+      - breacherx_pgdata:/var/lib/postgresql/data
+      # Apply the schema on first boot.
+      - ../src/db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U breacherx"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8787
+      DATABASE_URL: postgres://breacherx:${POSTGRES_PASSWORD:-breacherx}@db:5432/breacherx
+      BREACHERX_WEBHOOK_SECRET: ${BREACHERX_WEBHOOK_SECRET:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      BREACHERX_MODEL_PROVIDER: ${BREACHERX_MODEL_PROVIDER:-mock}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BREACHERX_DATA_DIR: /data
+    volumes:
+      - breacherx_data:/data
+    ports:
+      - "8787:8787"
+
+volumes:
+  breacherx_pgdata:
+  breacherx_data:
