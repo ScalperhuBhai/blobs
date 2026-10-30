@@ -68,6 +68,11 @@ function configFromFlags(flags: Flags): Config {
   if (typeof flags["max-findings"] === "string") {
     overrides.maxFindings = Number(flags["max-findings"]);
   }
+  if (flags["run-tests"] === true) overrides.enableTestReproduction = true;
+  if (typeof flags["test-command"] === "string") {
+    overrides.testCommand = flags["test-command"];
+    overrides.enableTestReproduction = true;
+  }
   const config = loadConfig(overrides);
   if (typeof flags["log-level"] === "string") config.logLevel = flags["log-level"] as Config["logLevel"];
   return config;
@@ -96,6 +101,8 @@ Options (review):
   --max-findings <n>       Cap published findings
   --all-lines              Do not restrict findings to changed lines
   --config <file>          Path to a .breacherx.json (else discovered under --repo)
+  --run-tests              Run the project's tests as reproduction evidence (opt-in)
+  --test-command <cmd>     Test command to run with --run-tests (e.g. "npm test")
   --review-id <id>         Logical id for the review (PR number / sha)
   --out <file>             Also write the formatted output to this file
   --no-save                Do not persist the run

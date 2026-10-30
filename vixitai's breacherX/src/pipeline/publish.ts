@@ -59,6 +59,10 @@ export function renderMarkdown(result: ReviewResult): string {
   lines.push("");
   lines.push(result.summary);
   lines.push("");
+  if (result.testRun?.ran) {
+    lines.push(`**Tests:** ${result.testRun.passed ? "✅ passed" : "❌ failed"} via \`${result.testRun.command}\` (${result.testRun.durationMs}ms) — evidence, not proof.`);
+    lines.push("");
+  }
 
   if (result.findings.length === 0) {
     lines.push("_No findings published._");
@@ -78,6 +82,7 @@ export function renderMarkdown(result: ReviewResult): string {
         `- **Confidence:** ${(f.calibratedConfidence * 100).toFixed(0)}% ` +
           `(${f.verificationStatus}, via ${f.analyzerResult ?? f.source})`,
       );
+      if (f.testResult) lines.push(`- **Tests:** ${f.testResult} _(evidence, not proof)_`);
       if (f.evidence.length) {
         lines.push(`- **Evidence:**`);
         for (const e of f.evidence) lines.push(`  - \`${e}\``);

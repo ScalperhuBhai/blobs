@@ -34,6 +34,7 @@ import {
   applyRuleOverrides,
 } from "../config/repo.js";
 import { loadCalibration } from "../db/feedback.js";
+import { reproduceTests, summarizeTestRun } from "./reproduction.js";
 
 async function timed<T>(
   stage: string,
@@ -159,6 +160,24 @@ export async function runReview(input: ReviewInput, baseConfig: Config): Promise
   annotate(verified.published);
   annotate(verified.suppressed);
 
+  // Optional test reproduction (opt-in; executes the project's test command).
+  const testRun = await timed(
+    "reproduction",
+    trace,
+    () =>
+      reproduceTests({
+        enabled: config.enableTestReproduction,
+        repoPath: input.repoPath,
+        command: config.testCommand,
+        timeoutMs: config.testTimeoutMs,
+      }),
+    (r) => ({ ran: r.ran, passed: r.passed ?? null }),
+  );
+  if (testRun.ran) {
+    const summary = summarizeTestRun(testRun);
+    for (const f of verified.published) f.testResult = summary;
+  }
+
   // Stage 07 — Publish.
   const published: Finding[] = verified.published;
   const reviewStatus = decideReviewStatus(published);
@@ -178,6 +197,7 @@ export async function runReview(input: ReviewInput, baseConfig: Config): Promise
     suppressed: verified.suppressed,
     trace,
     cost,
+    testRun: testRun.ran ? testRun : undefined,
     stats: {
       filesChanged: reviewableFiles.length,
       changedLines: countChangedLines({ files: reviewableFiles }),

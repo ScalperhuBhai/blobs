@@ -27,7 +27,12 @@ Legend: ✅ implemented · 🟡 partial · ⏳ specified, not yet built.
   partially evaluate) target files. Until the disposable-worker sandbox lands,
   run BreacherX against a working tree only when you trust that tree, or disable
   external analyzers by omitting `--repo`.
-- **No code execution of the change.** Dynamic test reproduction (blueprint
-  stage 06) is intentionally not wired into the in-process pipeline because it
-  would run untrusted code; it is reserved for an isolated worker with no
-  production secrets and restricted egress.
+- **Test reproduction is opt-in and executes code.** Dynamic test reproduction
+  (`src/pipeline/reproduction.ts`) runs the project's configured test command to
+  turn a claim into evidence. It is **off by default** and must be enabled
+  explicitly (`--run-tests`/`--test-command` or `BREACHERX_ENABLE_TEST_REPRO`).
+  It runs with no shell (argv-split), a hard timeout and a bounded buffer, and
+  records the outcome as *evidence, not proof*. Enabling it against an untrusted
+  repository executes that repository's code, so in production it must run in a
+  disposable isolated worker with no production secrets and restricted egress —
+  never in-process against untrusted input.

@@ -42,8 +42,9 @@ scaffolded, ⏳ = specified/next.
 - ✅ Confidence calibration fit from developer feedback labels (`breacherx
   feedback` + `breacherx calibrate`), blended into verification — `src/pipeline/calibration.ts`,
   `src/db/feedback.ts`.
-- ⏳ Targeted test reproduction in a disposable isolated worker (base vs head),
-  feeding `test_result` — with the caveats in `ACCURACY.md`/`SECURITY.md`.
+- ✅ Test reproduction (opt-in, no-shell, timeout-bounded) feeding `test_result`
+  — `src/pipeline/reproduction.ts`. ⏳ remaining: base-vs-head differential runs
+  inside a disposable isolated worker (see `SECURITY.md`).
 
 ## Phase 4 — Shadow beta (⏳)
 - ⏳ Review real PRs without posting; compare to human reviews, accepted fixes,

@@ -10,6 +10,7 @@
 import type { CodeSymbol } from "./context/symbols.js";
 import type { ImportRef } from "./context/imports.js";
 import type { ScoredChunk } from "./context/retrieval.js";
+import type { TestRunResult } from "./pipeline/reproduction.js";
 
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -178,6 +179,8 @@ export interface ReviewResult {
   suppressed: Finding[];
   trace: StageTrace[];
   cost: CostTrace;
+  /** Optional test-reproduction signal (Phase 3, opt-in). */
+  testRun?: TestRunResult;
   stats: {
     filesChanged: number;
     changedLines: number;

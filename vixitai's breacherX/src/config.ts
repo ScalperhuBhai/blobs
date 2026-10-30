@@ -23,6 +23,10 @@ export interface Config {
   githubApiUrl: string;
   autoApprove: boolean;
   port: number;
+  // --- Test reproduction (opt-in, executes code; see docs/SECURITY.md) ---
+  enableTestReproduction: boolean;
+  testCommand?: string;
+  testTimeoutMs: number;
 }
 
 function bool(value: string | undefined, fallback: boolean): boolean {
@@ -65,6 +69,9 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     githubApiUrl: env.GITHUB_API_URL || "https://api.github.com",
     autoApprove: bool(env.BREACHERX_AUTO_APPROVE, false),
     port: Math.trunc(num(env.PORT ?? env.BREACHERX_PORT, 8787)),
+    enableTestReproduction: bool(env.BREACHERX_ENABLE_TEST_REPRO, false),
+    testCommand: env.BREACHERX_TEST_COMMAND || undefined,
+    testTimeoutMs: Math.trunc(num(env.BREACHERX_TEST_TIMEOUT_MS, 120_000)),
     ...overrides,
   };
   return config;
