@@ -33,6 +33,7 @@ import {
   runCustomRules,
   applyRuleOverrides,
 } from "../config/repo.js";
+import { loadCalibration } from "../db/feedback.js";
 
 async function timed<T>(
   stage: string,
@@ -111,31 +112,36 @@ export async function runReview(input: ReviewInput, baseConfig: Config): Promise
           .retrieve(c.changedSnippet, 4)
           .filter((s) => s.chunk.filePath !== c.file.newPath)
           .slice(0, 3);
-        const res = await provider.discover({
-          file: c.file,
-          changedSnippet: c.changedSnippet,
-          headContent: c.headContent,
-          knownFindings: known,
-          changedSymbols: c.changedSymbols,
-          imports: c.imports,
-          relatedContext: related,
-        });
-        inputTokens += res.usage.inputTokens;
-        outputTokens += res.usage.outputTokens;
-        all.push(...res.findings);
+        // Run each specialist pass (correctness/security/reliability/performance/…).
+        for (const pass of config.discoveryPasses) {
+          const res = await provider.discover({
+            file: c.file,
+            changedSnippet: c.changedSnippet,
+            headContent: c.headContent,
+            knownFindings: known,
+            changedSymbols: c.changedSymbols,
+            imports: c.imports,
+            relatedContext: related,
+            pass,
+          });
+          inputTokens += res.usage.inputTokens;
+          outputTokens += res.usage.outputTokens;
+          all.push(...res.findings);
+        }
       }
       return all;
     },
-    (r) => ({ findings: r.length, inputTokens, outputTokens }),
+    (r) => ({ findings: r.length, inputTokens, outputTokens, passes: config.discoveryPasses.length }),
   );
 
   const rawAll = applyRuleOverrides([...deterministic, ...discovery], repoConfig);
 
-  // Stage 06 — Verification.
+  // Stage 06 — Verification (with calibration learned from feedback, if any).
+  const calibration = await loadCalibration(config.dataDir);
   const verified = await timed(
     "verification",
     trace,
-    async () => verifyFindings(rawAll, headByPath, config),
+    async () => verifyFindings(rawAll, headByPath, config, calibration),
     (r) => ({ published: r.published.length, suppressed: r.suppressed.length }),
   );
 

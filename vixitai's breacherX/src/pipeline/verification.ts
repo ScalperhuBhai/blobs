@@ -25,6 +25,7 @@ import type {
 import { SEVERITY_ORDER } from "../types.js";
 import { clamp01 } from "../config.js";
 import { maxKnownLine, overlapsChangedLines } from "./context.js";
+import type { CalibrationModel } from "./calibration.js";
 
 const DETERMINISTIC_SOURCES = new Set(["builtin", "ruff", "eslint", "semgrep"]);
 
@@ -72,6 +73,7 @@ export function verifyFindings(
   raw: RawFinding[],
   headByPath: Map<string, { file: FileDiff; headContent?: string }>,
   config: Config,
+  calibration?: CalibrationModel,
 ): VerificationOutput {
   const headIndex = new Map<string, HeadIndex>();
   for (const [path, v] of headByPath) {
@@ -140,6 +142,15 @@ export function verifyFindings(
       calibrated = clamp01(f.confidence * 0.75);
       status = calibrated >= 0.5 ? "plausible" : "unverified";
       analyzerResult = "model-only";
+    }
+
+    // Calibrate against measured per-rule/source precision from feedback labels.
+    if (calibration) {
+      const adjusted = calibration.adjust(calibrated, f.ruleId, f.source);
+      if (adjusted !== calibrated) {
+        calibrated = adjusted;
+        analyzerResult += "+calibrated";
+      }
     }
 
     const threshold = thresholdFor(f.severity, config.minConfidence);

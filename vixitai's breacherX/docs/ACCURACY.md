@@ -79,6 +79,26 @@ false negative** so the suite reports realistic recall (85.7%) rather than a
 vanity 100%. Closing that gap is exactly what a real AI discovery pass is for;
 the benchmark will show whether it does.
 
+## The feedback → calibration loop
+
+Developer feedback closes the loop:
+
+```bash
+# A developer marks a published finding:
+breacherx feedback --review "acme/blobs#42@abc1234" --finding fnd_py-bare-except_9_3 --label false_positive
+# Fit per-rule precision from all accumulated feedback and write calibration.json:
+breacherx calibrate --min-samples 5
+```
+
+`calibrate` joins feedback labels with stored runs to recover each finding's
+rule/source, then estimates each rule's historical precision (Laplace-smoothed,
+with a source-level fallback when a rule has too few samples). The review
+pipeline loads `calibration.json` and **blends** that measured precision into
+each finding's confidence (`0.5 × pipeline_confidence + 0.5 × measured_precision`).
+A rule that developers keep rejecting sinks below the publish threshold on its
+own — measured, not hand-tuned. This is the mechanical form of "calibrate
+against held-out labeled examples."
+
 ### Growing the suite
 
 Per the blueprint, feed the private regression suite from shadow mode: verified

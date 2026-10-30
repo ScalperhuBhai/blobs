@@ -18,6 +18,8 @@ import { setLogLevel, log } from "./util/logger.js";
 import { runReview } from "./pipeline/pipeline.js";
 import { renderMarkdown, renderText } from "./pipeline/publish.js";
 import { RunStore } from "./db/store.js";
+import { FeedbackStore, fitCalibration, saveCalibration } from "./db/feedback.js";
+import type { FeedbackLabel } from "./pipeline/calibration.js";
 import { runBenchmark, formatBenchReport } from "../bench/harness.js";
 
 interface Flags {
@@ -76,9 +78,15 @@ const HELP = `BreacherX — evidence-based AI code review
 Usage:
   breacherx review <diff-file|-> [options]
   breacherx bench [--set regression] [options]
+  breacherx feedback --review <id> --finding <id> --label <label>
+  breacherx calibrate [--min-samples <n>]
   breacherx runs
   breacherx version
   breacherx help
+
+Feedback labels: useful | fixed | not_useful | false_positive
+calibrate fits per-rule precision from feedback and writes calibration.json,
+which the review pipeline then blends into confidence (learn + measure loop).
 
 Options (review):
   --repo <path>            Working tree root for full-file context + external analyzers
@@ -164,6 +172,50 @@ async function cmdBench(flags: Flags): Promise<number> {
   return 0;
 }
 
+const VALID_LABELS = new Set<FeedbackLabel>(["useful", "fixed", "not_useful", "false_positive"]);
+
+async function cmdFeedback(flags: Flags): Promise<number> {
+  const config = configFromFlags(flags);
+  const reviewId = flags.review;
+  const findingId = flags.finding;
+  const label = flags.label;
+  if (typeof reviewId !== "string" || typeof findingId !== "string" || typeof label !== "string") {
+    log.error("feedback requires --review <id> --finding <id> --label <useful|fixed|not_useful|false_positive>");
+    return 2;
+  }
+  if (!VALID_LABELS.has(label as FeedbackLabel)) {
+    log.error(`invalid label '${label}'`);
+    return 2;
+  }
+  const store = new FeedbackStore(config.dataDir);
+  await store.record({
+    reviewId,
+    findingId,
+    label: label as FeedbackLabel,
+    actor: typeof flags.actor === "string" ? flags.actor : undefined,
+  });
+  process.stdout.write(`recorded ${label} for ${findingId} on ${reviewId}\n`);
+  return 0;
+}
+
+async function cmdCalibrate(flags: Flags): Promise<number> {
+  const config = configFromFlags(flags);
+  setLogLevel(config.logLevel);
+  const minSamples =
+    typeof flags["min-samples"] === "string" ? Number(flags["min-samples"]) : 5;
+  const { model, outcomes, unmatched } = await fitCalibration(config.dataDir, minSamples);
+  const path = await saveCalibration(config.dataDir, model);
+  const rulesWithData = Object.entries(model.data.byRule)
+    .filter(([, c]) => c.total >= minSamples)
+    .map(([rule, c]) => `  ${rule}: ${((c.useful / c.total) * 100).toFixed(0)}% useful (${c.total})`);
+  process.stdout.write(
+    `Calibration fit from ${outcomes.length} outcome(s) (${unmatched} unmatched), ` +
+      `minSamples=${minSamples}\nsaved: ${path}\n` +
+      (rulesWithData.length ? `Rules with enough data:\n${rulesWithData.join("\n")}\n` : "No rule has enough samples yet.\n"),
+  );
+  return 0;
+}
+
 async function cmdRuns(flags: Flags): Promise<number> {
   const config = configFromFlags(flags);
   const store = new RunStore(config.dataDir);
@@ -181,6 +233,10 @@ async function main(): Promise<number> {
       return cmdReview(flags);
     case "bench":
       return cmdBench(flags);
+    case "feedback":
+      return cmdFeedback(flags);
+    case "calibrate":
+      return cmdCalibrate(flags);
     case "runs":
       return cmdRuns(flags);
     case "version":

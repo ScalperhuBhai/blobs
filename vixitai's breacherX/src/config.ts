@@ -13,6 +13,8 @@ export interface Config {
   minConfidence: number;
   changedLinesOnly: boolean;
   maxFindings: number;
+  /** Specialist discovery passes to run per file (blueprint stage 05). */
+  discoveryPasses: string[];
   dataDir: string;
   logLevel: LogLevel;
   // --- Control plane / GitHub App ---
@@ -34,6 +36,12 @@ function num(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function parseList(value: string | undefined, fallback: string[]): string[] {
+  if (value === undefined) return fallback;
+  const items = value.split(",").map((s) => s.trim()).filter(Boolean);
+  return items.length > 0 ? items : fallback;
+}
+
 export function loadConfig(overrides: Partial<Config> = {}): Config {
   const env = process.env;
   const provider = (env.BREACHERX_MODEL_PROVIDER as ModelProviderName) ?? "mock";
@@ -46,6 +54,10 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     minConfidence: clamp01(num(env.BREACHERX_MIN_CONFIDENCE, 0.55)),
     changedLinesOnly: bool(env.BREACHERX_CHANGED_LINES_ONLY, true),
     maxFindings: Math.max(1, Math.trunc(num(env.BREACHERX_MAX_FINDINGS, 50))),
+    discoveryPasses: parseList(
+      env.BREACHERX_DISCOVERY_PASSES,
+      ["correctness", "security", "reliability", "performance"],
+    ),
     dataDir: env.BREACHERX_DATA_DIR || ".breacherx",
     logLevel: (env.BREACHERX_LOG_LEVEL as LogLevel) || "info",
     webhookSecret: env.BREACHERX_WEBHOOK_SECRET || undefined,

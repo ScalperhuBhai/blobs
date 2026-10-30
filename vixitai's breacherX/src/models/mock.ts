@@ -91,6 +91,16 @@ const HEURISTICS: HeuristicRule[] = [
   },
 ];
 
+/** Maps a specialist pass name to the finding categories it is responsible for. */
+const PASS_CATEGORIES: Record<string, FindingCategory[]> = {
+  correctness: ["correctness"],
+  security: ["security"],
+  reliability: ["reliability"],
+  performance: ["performance"],
+  "test-gap": ["test-gap"],
+  maintainability: ["maintainability", "style"],
+};
+
 /** A cheap deterministic token estimate (~4 chars/token). */
 function estTokens(text: string): number {
   return Math.max(1, Math.ceil(text.length / 4));
@@ -105,6 +115,9 @@ export class MockProvider {
     const findings: RawFinding[] = [];
     const seen = new Set<string>();
 
+    // When run as a specialist pass, only emit findings of that pass's category.
+    const allowed = req.pass ? PASS_CATEGORIES[req.pass] : undefined;
+
     const addedLines: DiffLine[] = [];
     for (const hunk of file.hunks) {
       for (const line of hunk.lines) if (line.kind === "add") addedLines.push(line);
@@ -113,6 +126,7 @@ export class MockProvider {
     for (const line of addedLines) {
       const lineNo = line.newLine ?? 0;
       for (const rule of HEURISTICS) {
+        if (allowed && !allowed.includes(rule.category)) continue;
         if (!rule.test(line.content, file.language)) continue;
         const key = `${rule.id}:${file.newPath}:${lineNo}`;
         if (seen.has(key)) continue;

@@ -35,11 +35,15 @@ scaffolded, ⏳ = specified/next.
 - ⏳ Vector half of hybrid retrieval over `code_chunks` (pgvector) + full
   call/dependency graph and incremental indexing.
 
-## Phase 3 — Verification hardening (core built ✅ / reproduction ⏳)
-- ✅ Range validation, introduced-by-change, dedupe, corroboration, calibration.
+## Phase 3 — Verification hardening (built ✅ / reproduction ⏳)
+- ✅ Range validation, introduced-by-change, dedupe, corroboration, severity-aware gating.
+- ✅ Specialist multi-pass discovery (correctness/security/reliability/performance),
+  configurable via `BREACHERX_DISCOVERY_PASSES`.
+- ✅ Confidence calibration fit from developer feedback labels (`breacherx
+  feedback` + `breacherx calibrate`), blended into verification — `src/pipeline/calibration.ts`,
+  `src/db/feedback.ts`.
 - ⏳ Targeted test reproduction in a disposable isolated worker (base vs head),
   feeding `test_result` — with the caveats in `ACCURACY.md`/`SECURITY.md`.
-- ⏳ Confidence calibration fit against the accumulated `finding_feedback` labels.
 
 ## Phase 4 — Shadow beta (⏳)
 - ⏳ Review real PRs without posting; compare to human reviews, accepted fixes,
